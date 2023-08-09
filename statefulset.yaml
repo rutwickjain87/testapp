@@ -28,4 +28,4 @@ spec:
       volumes:
       - name: data
         persistentVolumeClaim:
-          claimName: postgres-restored-csi-pvc
+          claimName: postgres-csi-pvc
