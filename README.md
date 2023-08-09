@@ -1,13 +1,13 @@
 # Postgres App
 
-A sample K8s Postgres app that is deployed as a stateful set using CSI(Container Storage Interface). CSI enables dynamic provisioning, taking snapshot and restoration of persistent volumes from a given volume snapshot.
+A sample K8s Postgres app that is deployed as a stateful set using CSI(Container Storage Interface). CSI enables dynamic provisioning, taking snapshot and restoration of persistent volumes.
 
 #### Objetive
 The aim of this guide is to list down the steps required to deploy Postgres statefulset and test out the volume snapshot and restore features. Using the snapshot, the postgres app should be able to restore the data from the restored persistent volume.
 
-A high level breakdown of the worflow:
+A high level breakdown of the workflow:
 
-1. provision K8s cluster - this guide is based on Minikube K8s cluster but any K8s cluster can work
+1. provision K8s cluster
 2. deploy Postgres stateful service 
 3. create a Snapshot of the persistent volume attached to the Postgres statefulset 
 4. create a new persistent volume from the above Snapshot
@@ -40,9 +40,9 @@ kubectl apply -f service.yaml
 kubectl apply -f statefulset.yaml
 ```
 
-Insert sample data into the Postgres DB
+Insert sample data into the Postgres DB.
 
-Let's log into the postgres container first( password is 'admin' - as configured in the configmap.yaml)
+Log into the postgres container first( password is 'admin' - as configured in the configmap.yaml)
 
 ```
 kubectl exec -it postgres-0 --  psql -h localhost -U admin --password -d postgresdb -W
@@ -62,8 +62,13 @@ CREATE TABLE links (
 INSERT INTO links (url, name)
 VALUES('https://web3auth.io/','Web3 Wallet Infrastructure');
 ```
+Validat if the data was successfully inserted
 
-Create a VolumeSnapshot. Since we added some sample data in the above step, this snapshot should capture the state of the volume along with that data.
+```
+select * from links;
+```
+
+Create a VolumeSnapshot. Since, we have added some sample data in the above step, a snapshot should capture the state of the volume along with that data.
 ```
 kubectl apply -f volume_snapshot.yaml
 ```
@@ -73,7 +78,6 @@ Create a new PVC from the snapshot
 ```
 kubectl apply -f restore_volume_from_snapshot.yaml
 ```
-
 
 Update the StatefulSet: Modify your StatefulSet definition to use the new PVC created from the snapshot as the storage. Replace line 31 with updated value of the PVC claim, i.e. from 'postgres-csi-pvc' to 'postgres-restored-csi-pvc'. 
 
@@ -87,8 +91,14 @@ In order to validate the data, we need to log inside the Postgres container and 
 kubectl exec -it postgres-0 --  psql -h localhost -U admin --password -d postgresdb -W
 ```
 
-After you have logged in, run below commands to validate the data
+Execute the below SQL queries to validate the data
 ```
 \dt;
 select * from links;
 ```
+Voila, you were able to restored your Postgres data from the snapshot.
+
+#### Additional Improvements
+- We can automate the snapshotting of the volume using a K8s Cron Job. In an event of a crash or failure, we can always restore the data from the last snapshot.
+- We can even use tool like Velero which enables a comprehensive backup and restore of entire K8s state and not just persistent volumes
+
